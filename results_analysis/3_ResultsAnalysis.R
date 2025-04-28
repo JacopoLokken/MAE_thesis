@@ -1,7 +1,8 @@
-setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis")
-
-# Loading simulation results
-results <-readRDS("running_experiment/simulation_results1.rds")
+####
+#### Set working directory and read previous saved Rds ####
+####
+# setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis") ## IMPORTANT! Change with user working directory
+results <-readRDS("running_experiment/simulation_results1.rds") # Loading simulation results
 
 # Loading true data results results to print them later next to simulation results
 reference_results <-readRDS("data/reference_results.rds")
@@ -49,7 +50,9 @@ aggregate_rmse_gender <- aggregate(cbind(oob_male, oob_female) ~ misP + hand, da
 aggregate_rmse <- merge(aggregate_rmse_oob_all, aggregate_rmse_missing_complete, by = c("misP", "hand"), all = TRUE)
 aggregate_rmse <- merge(aggregate_rmse, aggregate_rmse_gender, by = c("misP", "hand"), all = TRUE)
 
-# Computing and aggregrating BIAS 
+
+# Computing and agregrating BIAS 
+# No need for standard deviation here, as it is mathematically equivalent to the sd of oob rates
 aggregate_bias_oob_all <- aggregate(oob_all ~ misP + hand, data = results,
                                     function(x) mean(x - oobBaseline, na.rm = TRUE))
 aggregate_bias_missing_complete <- aggregate(cbind(oob_missing, oob_complete) ~ misP + hand, data = results,
@@ -58,6 +61,8 @@ aggregate_bias_gender <- aggregate(cbind(oob_male, oob_female) ~ misP + hand, da
                                    function(x) mean(x - oobBaseline, na.rm = TRUE))
 aggregate_bias <- merge(aggregate_bias_oob_all, aggregate_bias_missing_complete, by = c("misP", "hand"), all = TRUE)
 aggregate_bias <- merge(aggregate_bias, aggregate_bias_gender, by = c("misP", "hand"), all = TRUE)
+
+
 
 # Print the results
 print(rf_baseline$confusion)
@@ -76,7 +81,8 @@ saveRDS(list(
   aggregate_results = aggregate_results,
   aggregate_sd = aggregate_sd,
   aggregate_rmse = aggregate_rmse,
-  aggregate_bias = aggregate_bias
+  aggregate_bias = aggregate_bias,
+  aggregate_rmse_sd = aggregate_rmse_sd
 ), "results_analysis/aggregated_results.rds")
 
 
@@ -98,16 +104,5 @@ colnames(rank_var_by_method) <- gsub("rank_", "var_rank_", colnames(rank_var_by_
 cat("Variance in Variable Importance Ranks Across Replications:\n")
 print(rank_var_by_method)
 
-# Calculate the average rank variance across all variables for each method
-# Higher values --> less stable variable importance rankings
-rank_var_by_method$avg_variance <- rowMeans(rank_var_by_method[, grep("var_rank_", names(rank_var_by_method))])
 
-# Reshape to compare methods directly (one row per missing proportion)
-rank_var_wide <- reshape(rank_var_by_method,
-                         idvar = "misP",
-                         timevar = "hand",
-                         direction = "wide")
-
-cat("\nComparison of Average Rank Variance Across Methods:\n")
-print(rank_var_wide[, c("misP", "avg_variance.omit", "avg_variance.roughfix", "avg_variance.rfimpute")])
 

@@ -1,12 +1,13 @@
 library(ggplot2)
 
-setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis")
+# setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis") ## IMPORTANT! Un-comment before running
 aggregated_data <- readRDS("results_analysis/aggregated_results.rds")
 aggregate_results <- aggregated_data$aggregate_results
 aggregate_sd <- aggregated_data$aggregate_sd
 reference_results <- readRDS("data/reference_results.rds")
 aggregate_rmse <- aggregated_data$aggregate_rmse
 aggregate_bias <- aggregated_data$aggregate_bias
+aggregate_rmse_sd <- aggregated_data$aggregate_rmse_sd
 results <-readRDS("running_experiment/simulation_results1.rds")
 ####
 #### Overall OOB ####
@@ -57,6 +58,7 @@ ggplot(plot_data, aes(x = factor(misP), group = hand)) +
   ) +
   theme_minimal() +
   theme(
+    axis.line = element_line(colour = "black"),
     legend.position = "bottom",
     panel.grid.major.x = element_blank(),
     axis.text.x = element_text(size = 12),
@@ -106,6 +108,7 @@ ggplot(long_data1, aes(x = factor(misP), y = oob_mean, group = hand)) +
   labs(x = "Proportion of Missing Values", y = "OOB Error Rate") +
   theme_minimal() +
   theme(
+    axis.line = element_line(colour = "black"),
     legend.position = "bottom",
     strip.background = element_rect(fill = "gray90", color = NA),
     strip.text = element_text(face = "bold")
@@ -151,6 +154,7 @@ ggplot(long_data_gender, aes(x = factor(misP), y = oob_mean, group = hand)) +
   labs(x = "Proportion of Missing Values", y = "OOB Error Rate") +
   theme_minimal() +
   theme(
+    axis.line = element_line(colour = "black"),
     legend.position = "bottom",
     strip.background = element_rect(fill = "gray90", color = NA),
     strip.text = element_text(face = "bold")
@@ -186,8 +190,25 @@ bias_long <- reshape(
   idvar = c("misP", "hand")
 )
 
-# Merge RMSE and Bias data
+# Reshape SD data into long format (for bias - but SD is the same as the aggregated SDs of OOB error rates)
+sd_long <- reshape(
+  aggregate_sd,
+  direction = "long",
+  varying = list(
+    c("oob_all", "oob_missing", "oob_complete", "oob_male", "oob_female")
+  ),
+  timevar = "metric",
+  times = c("Overall", "Missing", "Complete", "Male", "Female"),
+  v.names = "sd",
+  idvar = c("misP", "hand")
+)
+
+
+# Merge all data
 combined_long <- merge(rmse_long, bias_long, by = c("misP", "hand", "metric"))
+combined_long <- merge(combined_long, sd_long, by = c("misP", "hand", "metric"))
+
+
 # Convert metric to factor with specified order
 combined_long$metric <- factor(combined_long$metric,
                                levels = c("Overall", "Missing", "Complete", "Female", "Male"))
@@ -205,12 +226,16 @@ rmse_plot <- ggplot(combined_long, aes(x = factor(misP), y = RMSE, group = hand,
   ) +
   labs(x = "Proportion of Missing Values", y = "RMSE") +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme(axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+    )
 
 # Plot Bias
 bias_plot <- ggplot(combined_long, aes(x = factor(misP), y = Bias, group = hand, color = hand)) +
   geom_line(linewidth = 1) +
   geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Bias - sd, ymax = Bias + sd), 
+                width = 0.1, linewidth = 0.8) +
   facet_wrap(~metric, nrow = 1) +
   scale_x_discrete(labels = c("20%", "50%", "80%")) +
   scale_color_manual(
@@ -220,7 +245,10 @@ bias_plot <- ggplot(combined_long, aes(x = factor(misP), y = Bias, group = hand,
   ) +
   labs(x = "Proportion of Missing Values", y = "Bias") +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme( 
+    axis.line = element_line(colour = "black"),
+    legend.position = "bottom"
+  )
 
 print(bias_plot)
 print(rmse_plot)
@@ -246,21 +274,6 @@ gini_long <- reshape(
 )
 
 
-gini_strip <- ggplot(gini_long, aes(x = importance, y = variable)) +
-  geom_jitter(alpha = 0.1, height = 0.2, size = 0.5) +
-  facet_grid(hand ~ misP) +  # No custom labeller
-  labs(x = "Mean Decrease Gini",
-       y = "Variable") +
-  theme_minimal()
-
-# Print and save
-print(gini_strip)
-ggsave("viz/gini_importance_distribution.png", gini_strip, width = 12, height = 8)
-
-####
-#### Plot Mean Decrease Gini for variable importance (REVISED)
-####
-
 # Get baseline variable importance order
 baseline_imp <- readRDS("data/var_imp_baseline.rds")
 variable_order <- baseline_imp$Variable[order(baseline_imp$Rank, decreasing = T)]
@@ -280,14 +293,17 @@ gini_strip <- ggplot(gini_long, aes(x = importance, y = variable, color = hand))
   ) +
   labs(
     x = "Mean Decrease Gini",
-    y = "Variable"
+    y = "Variable",
+    title = "Percentage of Missing Data" # Not actually the title, but the general label for the three facets 
   ) +
   theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    strip.background = element_rect(fill = "gray90", color = NA),
-    strip.text = element_text(face = "bold"),
-    panel.spacing = unit(1.5, "lines")
-  )
+  theme(axis.line = element_line(colour = "black"),
+        legend.position = "bottom",
+        strip.background = element_rect(fill = "gray90", color = NA),
+        strip.text = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"),
+        plot.title = element_text(hjust = 0.55, size = 11, face = "plain", # Not actually the title
+                                  margin = margin(b = 15, t = 5)),
+        plot.title.position = "plot")
 
 print(gini_strip)

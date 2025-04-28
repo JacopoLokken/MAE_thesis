@@ -1,25 +1,40 @@
+#### Access packages, set working directory & create directories, set.seed for baseline & lower bound models. ####
+# install.packages("randomForest")
+# install.packages("cranlogs")
+# install.packages("ggplot2")
+# install.packages("PASWR2")
 library("randomForest")
 library("cranlogs")
 library("ggplot2")
 library("PASWR2")
-setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis")
+
+# setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis") ## IMPORTANT! Change with user working directory and un - comment
+
+dirs <- c("data", "results_analysis", "running_experiment", "viz") # Run this to create directories where Rds will be stored
+for(dir in dirs) {
+  if(!dir.exists(dir)) {
+    dir.create(dir)
+    cat("Created directory:", dir, "\n") # Print it
+  }
+}
+
 set.seed(12)
 
 #### Random Forest packages downloads overview ####
 rf_packages <- c("randomForest", "ranger", "party", "randomForestSRC", "h2o", "Rborist")
 
-# Get data for last 5 years (1825 days)
+# Get data for last 3 years approximately...
 last_year <- cran_downloads(packages = rf_packages,
-                            from = Sys.Date() - 1070,
+                            from = Sys.Date() - 1070, #...from when this code is ran
                             to = Sys.Date())
 last_year$month <- format(last_year$date, "%Y-%m") # And extract month
 
-# Aggregate and sort the data
-monthly_data <- aggregate(count ~ package + month, data = last_year, FUN = sum)
+# Prepare data for visualization 
+monthly_data <- aggregate(count ~ package + month, data = last_year, FUN = sum) # Monthly data
 names(monthly_data)[names(monthly_data) == "count"] <- "monthly_downloads"
-monthly_data <- monthly_data[order(monthly_data$month, -monthly_data$monthly_downloads), ]
+monthly_data <- monthly_data[order(monthly_data$month, -monthly_data$monthly_downloads), ] # Order it
 
-# Create visualization with regular numbers on y-axis
+# Visualize it
 ggplot(monthly_data, 
        aes(x = month, y = monthly_downloads, color = package, group = package)) +
   geom_line(linewidth = 1) +
@@ -41,14 +56,14 @@ ggplot(monthly_data,
 
 
 ####
-####  Setting up dataset ####
+#### Setting up dataset ####
 ####
-preds <- c("pclass", "sex", "age", "sibsp", "parch", "fare")
+preds <- c("pclass", "sex", "age", "sibsp", "parch", "fare") 
 dat <- TITANIC3
 dat <- dat[,c("pclass","sex","age","sibsp","parch","fare","survived")]
 dat <- na.omit(dat)
 dat$survived <- as.factor(dat$survived)
-saveRDS(dat, "data/cleaned_titanic_data.rds")
+saveRDS(dat, "data/cleaned_titanic_data.rds") # Saving for later use
 saveRDS(preds, "data/rf_predictors.rds")
 
 ####
@@ -64,7 +79,7 @@ MDA <- varImpPlot(rf.complete, # But we are interested in Mean Decrease Accuracy
                   type = 1,
 ) # Plot the importance measures
 
-# I customize it to make it APA - Compliant (deleting  text that I will add myself in word)
+# Customizing the image to make it apa compliant (deleting title)
 importance_accuracy <- importance.complete[, "MeanDecreaseAccuracy"]
 dotchart(sort(importance_accuracy), 
          xlim = c(0, 100))
@@ -72,8 +87,9 @@ dotchart(sort(importance_accuracy),
 ####
 #### Descriptives ####
 ###
-str(dat)
-summary(dat) # no sense to have mean, sd, median of some variables
+
+str(dat) # Quick overview
+summary(dat) 
 
 cat("\nPassenger Class (pclass):\n")
 pclass_summary <- as.data.frame(table(dat$pclass))
@@ -127,47 +143,38 @@ fare_stats <- c(
   Min = round(min(dat$fare), 2),
   Max = round(max(dat$fare), 2)
 )
-print(fare_stats)
 
-# Save descriptive statistics
-saveRDS(list(
-  pclass_summary = pclass_summary,
-  sex_summary = sex_summary,
-  surv_summary = surv_summary,
-  sibsp_summary = sibsp_summary,
-  parch_summary = parch_summary,
-  age_stats = age_stats,
-  fare_stats = fare_stats
-), "data/descriptive_stats.rds")
+print(fare_stats) # Overview
+
+
 
 ####
 #### Correlations ####
 ####
 
-# Function to determine the type of a variable. Might be useful if deciding to add more variables and they are coded differently
+# Function to determine the type of a variable. Potentially useful if the user wishes to add more variables to the analysis
 get_var_type <- function(x) {
   if (is.numeric(x)) {
-    if (length(unique(x)) == 2) { # If numeric with 2 unique values --> Dichotomous...
-      return("dichot")
+    if (length(unique(x)) == 2) { # If numeric with 2 unique values...
+      return("dichot") #... return dichotomous 
     } else {
-      return("continuous") #...otherwise continuous 
+      return("continuous") #O therwise continuous 
     }
-  } else if (is.factor(x)) { # if not numeric, check if it's a factor
+  } else if (is.factor(x)) { # If not numeric, check if it's a factor
     if (nlevels(x) == 2) { # If said factor has exactly 2 levels...
       return("dichot") # ...return dichotomous
     } else {
-      return("categorical") # otherwise categorical
+      return("categorical") # Otherwise categorical
     }
   } else {
-    stop("Variable type not included!") # just in case
+    stop("Variable type not included!") # If non of the above, notify.
   }
 }
 
-# Function to converts variables for  correlation calculation
+# Function to convert variables for correlation calculation
 convert_for_corr <- function(x, type) {
   if (type == "dichot") { # For dichotomous variables, we recode the first level as 0 and the second as 1.
     if (is.factor(x)) {
-      # Recode factor: first level becomes 0, second becomes 1.
       return(ifelse(x == levels(x)[1], 0, 1))
     } else {
       # NOTE: Assuming numeric dichotomous variables are already coded 0/1.
@@ -176,14 +183,14 @@ convert_for_corr <- function(x, type) {
   } else if (type == "continuous") { # If type is continuous, convert it to numeric
     return(as.numeric(x))
   } else if (type == "categorical") {
-    # For categorical variables, using the underlying numeric codes is okay for spoearman's ro
+    # For categorical variables, using the underlying numeric codes is okay for spearman's ro
     if (is.factor(x)) {
       return(as.numeric(x))
     } else {
       return(as.numeric(x))
     }
   } else {
-    stop("Variable type not included!") # Again, just in case new added variable doesn't match
+    stop("Variable type not included!") # Get error if variable type is not recognised
   }
 }
 
@@ -193,19 +200,18 @@ compute_corr <- function(x, y, type_x, type_y) {
   y_num <- convert_for_corr(y, type_y)
   
   if (type_x == "dichot" && type_y == "dichot") { # If dichotomous vs. dichotomous...
-    return(cor(x_num, y_num, method = "pearson")) # ...Phi coefficient: just a pearson correlation betweenn dichotomous variables. Note: not comparable to other coefficients
+    return(cor(x_num, y_num, method = "pearson")) # ...Phi coefficient: just a pearson correlation between dichotomous variables.
   } else if (type_x == "continuous" && type_y == "continuous") {   # If continuous vs. continuous... 
     return(cor(x_num, y_num, method = "pearson")) # ...Pearson's r for continuous variables.
   } else if ((type_x == "continuous" && type_y == "dichot") || # If dichotomous vs. categorical/count or vs. continuous ...
              (type_x == "dichot" && type_y == "continuous") ||
              (type_x == "categorical" && type_y == "dichot") ||
              (type_x == "dichot" && type_y == "categorical")) {
-    return(cor(x_num, y_num, method = "pearson")) #... Point-Biserial correlation: just a Pearson correlation with the above data types. Note: not comparable to other coefficients.
-  } else if ((type_x == "continuous" && type_y == "categorical") || # If continuous vs. categorical/count or categroical/count vs. categorical/count...
+    return(cor(x_num, y_num, method = "pearson")) #... Point-Biserial correlation: just a Pearson correlation with the above data types.
+  } else if ((type_x == "continuous" && type_y == "categorical") || # If continuous vs. categorical/count or categorical/count vs. categorical/count...
              (type_x == "categorical" && type_y == "continuous") ||
-             (type_x == "categorical" && type_y == "categorical")) { # ...Spearman's rho for continuous vs. categorical/count or categorical/count vs. categorical/count
-    
-    return(cor(x_num, y_num, method = "spearman"))
+             (type_x == "categorical" && type_y == "categorical")) { 
+    return(cor(x_num, y_num, method = "spearman")) # ...Spearman's rho 
   } else {
     return(NA)
   }
@@ -225,9 +231,8 @@ for (i in 1:length(vars)) { # Loop over all pairs of variables to compute the ap
   }
 }
 
-# Display the correlation matrix, and save it
-print(round(corr_matrix, 3))
-saveRDS(corr_matrix, "data/correlation_matrix.rds")
+print(round(corr_matrix, 3)) # Overview
+
 
 ####
 #### Distributions of variables by sex ####
@@ -253,7 +258,7 @@ sex_distribution <- function(data) {
   cat("\nParents/Children (parch) by sex:\n")
   print(table(data$sex, data$parch))
   
-  cat("\nSurvival by sex:\n")
+  cat("\nSurvival by sex:\n")  
   print(table(data$sex, data$survived))
   
   # For continuous variables, just show means
@@ -266,31 +271,18 @@ sex_distribution <- function(data) {
 
 sex_distribution(dat)
 
-# Save sex distribution information
-sex_dist_info <- list(
-  sex_counts = table(dat$sex),
-  sex_by_pclass = table(dat$sex, dat$pclass),
-  sex_by_sibsp = table(dat$sex, dat$sibsp),
-  sex_by_parch = table(dat$sex, dat$parch),
-  sex_by_survived = table(dat$sex, dat$survived),
-  age_by_sex = tapply(dat$age, dat$sex, mean),
-  fare_by_sex = tapply(dat$fare, dat$sex, mean)
-)
-
-saveRDS(sex_dist_info, "data/sex_distribution.rds")
-
 ####
-#### TRUE DATA - UPPER AND LOWER BOUND ####
+#### True data analysis - baseline and lower bound models ####
 ####
 
 
-#### Baseline model - complete dataset
+#### Baseline model - complete dataset, 0% missingness
 rf_baseline <- randomForest(dat[,c(preds)], dat$survived, importance = T)
 oobBaseline <- rf_baseline$err.rate[nrow(rf_baseline$err.rate), "OOB"] # Overall error rate
 
 # Gender specific error rates for baseline
 oob_preds_baseline <- predict(rf_baseline, type = "response") # Gets OOB predictions from our baseline model
-oob_errors_baseline <- oob_preds_baseline != dat$survived # Boolean vector where if prediction error, on the complete dataset
+oob_errors_baseline <- oob_preds_baseline != dat$survived # Boolean vector 
 oob_baseline_male <- mean(oob_errors_baseline[dat$sex == "male"]) # Mean OOB for males
 oob_baseline_female <- mean(oob_errors_baseline[dat$sex == "female"]) # Mean OOB for females
 
@@ -330,7 +322,7 @@ imp_matrix_lower <- importance(rf_lower)
 print(var_imp_baseline)
 print(var_imp_lower)
 
-# Create dataframe for results
+# Create dataframe for results and save it
 reference_results <- data.frame(
   Model = c("Baseline (Complete Data)", "Without Sex Variable"),
   Overall_OOB = c(oobBaseline, oobLower),

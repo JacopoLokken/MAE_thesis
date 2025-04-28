@@ -1,11 +1,11 @@
 library(randomForest)
-setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis")
+# setwd("C:\\Users\\jacop\\OneDrive\\Desktop\\Thesis\\Code_Thesis") ## IMPORTANT: set working directory and un - comment
 set.seed(1729)
 
 ####
 #### Setting up data ####
 ####
-dat <- readRDS("data/cleaned_titanic_data.rds")
+dat <- readRDS("data/cleaned_titanic_data.rds") 
 preds <- readRDS("data/rf_predictors.rds")
 
 ####
@@ -166,4 +166,4 @@ for (misP in c(0.2, 0.5, 0.8)) {
   }
 }
 
-saveRDS(results, "running_experiment/simulation_results1.rds")
+saveRDS(results, "running_experiment/simulation_results1.rds") 
