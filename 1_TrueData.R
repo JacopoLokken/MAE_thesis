@@ -82,6 +82,7 @@ MDA <- varImpPlot(rf.complete, # But we are interested in Mean Decrease Accuracy
 # Customizing the image to make it apa compliant (deleting title)
 importance_accuracy <- importance.complete[, "MeanDecreaseAccuracy"]
 dotchart(sort(importance_accuracy), 
+         xlab = "Mean Decrease Accruacy", 
          xlim = c(0, 100))
 
 ####
