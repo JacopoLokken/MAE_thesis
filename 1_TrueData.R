@@ -159,7 +159,7 @@ get_var_type <- function(x) {
     if (length(unique(x)) == 2) { # If numeric with 2 unique values...
       return("dichot") #... return dichotomous 
     } else {
-      return("continuous") #O therwise continuous 
+      return("continuous") # Otherwise continuous 
     }
   } else if (is.factor(x)) { # If not numeric, check if it's a factor
     if (nlevels(x) == 2) { # If said factor has exactly 2 levels...
