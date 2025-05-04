@@ -81,8 +81,7 @@ saveRDS(list(
   aggregate_results = aggregate_results,
   aggregate_sd = aggregate_sd,
   aggregate_rmse = aggregate_rmse,
-  aggregate_bias = aggregate_bias,
-  aggregate_rmse_sd = aggregate_rmse_sd
+  aggregate_bias = aggregate_bias
 ), "results_analysis/aggregated_results.rds")
 
 
