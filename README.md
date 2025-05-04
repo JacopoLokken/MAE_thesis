@@ -2,7 +2,7 @@
 To download the code, press the "<>Code" green button in the top - right of this page, and choose "Download ZIP". 
 Unzip the file, and open every R script. 
 
-At the beginning of each R script, set the working directory (where the unzipped folder is located). 
+# At the beginning of each R script, *set the working directory (where the unzipped folder is located) and uncomment*.  
 
 The R scripts should be run in the following order:
 (1) 1_TrueData.R
